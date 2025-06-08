@@ -90,49 +90,33 @@ func get_error_from_result(result: int, response_code: int) -> HmcApiError:
 	var err = HmcApiError.new(result, "Request failed with result=" + str(result) + " response_code=" + str(response_code))
 	return err
 
-# Called when the node enters the scene tree for the first time.
-func _ready():
+func load_config() -> bool:
 	var args = OS.get_cmdline_args()
+	var config_path = "user://hmc_settings.json"
+
 	if "--config" in args:
 		var index = args.find("--config")
 		if index < args.size() - 1:
 			_logS("loading configuration from " + str(args[index + 1]))
-			var config_file: JsonConfigFile = JsonConfigFile.new()
-			config_file.load(args[index + 1])
-			HMC_API_SITE = config_file.data.get("site", HMC_API_SITE)
-			HMC_PROPERTY_KEY = config_file.data.get("property", HMC_PROPERTY_KEY)
-			HMC_API_KEY = config_file.data.get("key", HMC_API_KEY)					
-			
-	elif FileAccess.file_exists("user://hmc_settings.json"):
-		var user_dir = OS.get_user_data_dir()
-		_logS("loading " + user_dir + "/" + "hmc_settings.json")
-		var save_file = FileAccess.open("user://hmc_settings.json", FileAccess.READ)
-		var line = save_file.get_line()
-		var json = JSON.new()
-		var parse_result = json.parse(line)
-		if not parse_result == OK:
-			_logS("JSON Parse Error: " + json.get_error_message() + " in " + line + " at line " + json.get_error_line())
-		_logS(str(json.data))
-		var data = json.data as Dictionary
-		if data:
-			HMC_API_SITE = data.get("site", HMC_API_SITE)
-			HMC_PROPERTY_KEY = data.get("property", HMC_PROPERTY_KEY)
-			HMC_API_KEY = data.get("key", HMC_API_KEY)					
+			config_path = args[index + 1]
 	else:
-		var save_file = FileAccess.open("user://hmc_settings.json", FileAccess.WRITE)
-		var hmc_settings = {"key": HMC_API_KEY, "property": HMC_PROPERTY_KEY, "site": HMC_API_SITE}
-		save_file.store_line(JSON.stringify(hmc_settings))
-		
-	_logS("API SITE: " + API_SITE)
-	api_requests.DEFAULT_HTTP_REQUEST_SITE = API_SITE
-	api_requests.DEFAULT_HTTP_HEADERS = [
-		"X-API-KEY:" + HMC_API_KEY,
-		"X-PROPERTY-ID:" + HMC_PROPERTY_KEY
-		]
+		var user_dir = OS.get_user_data_dir()
+		_logS("loading configuration from " + user_dir + "/" + "hmc_settings.json")
+
+	var config_file: JsonConfigFile = JsonConfigFile.new()
+	config_file.load(config_path)
 	
-	_logS("HMC_API start")
-	_logS("HMC_API_KEY: " + HMC_API_KEY)
-	_logS("HMC_PROPERTY_KEY: " + HMC_PROPERTY_KEY)
+	HMC_API_SITE = config_file.data.get("site", HMC_API_SITE)
+	HMC_PROPERTY_KEY = config_file.data.get("property", HMC_PROPERTY_KEY)
+	HMC_API_KEY = config_file.data.get("key", HMC_API_KEY)					
+
+	return config_file.loaded
+
+# Called when the node enters the scene tree for the first time.
+func _ready():
+	if !load_config():
+		_logS("Failed to load configuration.")
+			
 	pass
 
 # Called every frame. 'delta' is the elapsed time since the previous frame.
