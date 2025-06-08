@@ -1,0 +1,31 @@
+[gd_scene load_steps=5 format=3 uid="uid://c0um0504aptct"]
+
+[ext_resource type="Script" path="res://HMC/voice.gd" id="1_ooobe"]
+[ext_resource type="PackedScene" uid="uid://ssifj8uwc63x" path="res://HMC/HMC_API.tscn" id="2_p4ilm"]
+
+[sub_resource type="AudioStreamGenerator" id="AudioStreamGenerator_r8f61"]
+mix_rate = 48000.0
+buffer_length = 0.2
+
+[sub_resource type="AudioStreamMicrophone" id="AudioStreamMicrophone_l4ujd"]
+
+[node name="Voice" type="Node"]
+script = ExtResource("1_ooobe")
+
+[node name="HTTPRequest" type="HTTPRequest" parent="."]
+
+[node name="HmcApi" parent="." instance=ExtResource("2_p4ilm")]
+HMC_API_SITE = ""
+
+[node name="Player" type="AudioStreamPlayer" parent="."]
+stream = SubResource("AudioStreamGenerator_r8f61")
+
+[node name="Recorder" type="AudioStreamPlayer" parent="."]
+stream = SubResource("AudioStreamMicrophone_l4ujd")
+bus = &"Record"
+
+[node name="SpeechPlayer" type="AudioStreamPlayer" parent="."]
+volume_db = -6.0
+bus = &"Speech"
+
+[connection signal="http_error_signal" from="HmcApi" to="." method="_on_hmc_api_http_error_signal"]

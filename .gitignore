@@ -1,0 +1,6 @@
+# local development environment
+.godot
+.vscode
+
+# webrtc extension
+webrtc

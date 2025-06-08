@@ -1,0 +1,10 @@
+[gd_scene load_steps=3 format=3 uid="uid://ssifj8uwc63x"]
+
+[ext_resource type="Script" path="res://HMC/HMC_API.gd" id="1_mxww8"]
+[ext_resource type="Script" path="res://HMC/http_api_request.gd" id="2_np1g2"]
+
+[node name="HmcApi" type="Node"]
+script = ExtResource("1_mxww8")
+
+[node name="HttpApiRequest" type="Node" parent="."]
+script = ExtResource("2_np1g2")
