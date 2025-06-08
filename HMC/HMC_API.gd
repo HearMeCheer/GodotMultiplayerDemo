@@ -46,32 +46,6 @@ class Room:
 	var muffled: bool
 	var allowStreaming: bool
 
-
-class ListenerParameters:
-	var listenGain: float = 1.0
-	var micGain: float = 1.0
-	var x: float
-	var y: float
-	var z: float
-
-	func _init(lg: float = 1.0, mg: float = 1.0, pos: Vector3 = Vector3(0,0,0)):
-		listenGain = lg
-		micGain = mg
-		x = pos.x
-		y = pos.y
-		z = pos.z
-		pass
-
-	func to_dict() -> Dictionary:
-		var dict = {
-			"listenGain": listenGain,
-			"micGain": micGain,
-			"x": x,
-			"y": y,
-			"z": z
-		}
-		return dict
-
 class Participant:
 	var id: String
 	var name: String
