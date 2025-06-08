@@ -14,8 +14,6 @@ var TAG = "GameCommon"
 
 class Options:
 	var enable_voice: bool = true
-	var enable_position_update: bool = false
-	var enable_player_rooms: bool = false
 	var delete_empty_event: bool = false
 	var voice_file: String = ""
 	#var dev_event_name: String = "dev_event"
