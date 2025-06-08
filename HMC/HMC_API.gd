@@ -93,19 +93,23 @@ func get_error_from_result(result: int, response_code: int) -> HmcApiError:
 func load_config() -> bool:
 	var args = OS.get_cmdline_args()
 	var config_path = "user://hmc_settings.json"
+	var create_default_config = true
 
 	if "--config" in args:
 		var index = args.find("--config")
 		if index < args.size() - 1:
 			_logS("loading configuration from " + str(args[index + 1]))
 			config_path = args[index + 1]
+			create_default_config = false
 	else:
 		var user_dir = OS.get_user_data_dir()
 		_logS("loading configuration from " + user_dir + "/" + "hmc_settings.json")
 
 	var config_file: JsonConfigFile = JsonConfigFile.new()
 	config_file.load(config_path)
-	
+	if not config_file.loaded and create_default_config:
+		config_file.save("user://hmc_settings.json")
+
 	HMC_API_SITE = config_file.data.get("site", HMC_API_SITE)
 	HMC_PROPERTY_KEY = config_file.data.get("property", HMC_PROPERTY_KEY)
 	HMC_API_KEY = config_file.data.get("key", HMC_API_KEY)					
