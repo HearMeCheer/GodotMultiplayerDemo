@@ -118,7 +118,6 @@ func get_error_from_result(result: int, response_code: int) -> HmcApiError:
 
 # Called when the node enters the scene tree for the first time.
 func _ready():
-	#var desktop_path = OS.get_system_dir(OS.SYSTEM_DIR_DESKTOP).replace("\\", "/").split("/")
 	var args = OS.get_cmdline_args()
 	if "--config" in args:
 		var index = args.find("--config")
@@ -160,7 +159,6 @@ func _ready():
 	_logS("HMC_API start")
 	_logS("HMC_API_KEY: " + HMC_API_KEY)
 	_logS("HMC_PROPERTY_KEY: " + HMC_PROPERTY_KEY)
-	#$HTTPRequest.request_completed.connect(_on_http_request_request_completed)
 	pass
 
 # Called every frame. 'delta' is the elapsed time since the previous frame.
@@ -181,7 +179,6 @@ func hand_shake(cb: Callable):
 		pass
 		
 	api_requests.process_request(response_handler)
-	#process_request(response_handler)
 
 func get_rtc_config(ice_url: String, cb: Callable):
 	_logS("get_rtc_config")
@@ -200,7 +197,6 @@ func get_rtc_config(ice_url: String, cb: Callable):
 			"method": HTTPClient.METHOD_POST, 
 			"default_headers": false
 		})
-	#process_request(response_handler, "connect", {"method": HTTPClient.METHOD_POST, "data": {"iceUrl": ice_url}})
 
 func send_offer(connection_url: String, offer: String, cb: Callable):
 	_logS("send_offer to " + connection_url)
@@ -227,7 +223,6 @@ func send_offer(connection_url: String, offer: String, cb: Callable):
 			"default_headers": false,
 			#"debug_log": true
 		})
-	#process_request(response_handler, "connect", {"method": HTTPClient.METHOD_POST, "data": offer})
 
 func fill_properties(obj: Object, item: Dictionary):
 	var prop_list = obj.get_property_list()
@@ -269,7 +264,6 @@ func check_hmc_response(response: Variant, body: Dictionary):
 
 #region Events
 func get_events(cb: Callable):
-	#var headers = ["X-API-KEY:"+API_KEY, "X-PROPERTY-ID:"+PROPERTY_ID]
 	_logS("get_events")
 	var response_handler = func handler(body: Dictionary):
 		var response: GetItemsResponse = GetItemsResponse.new()
@@ -378,7 +372,6 @@ func delete_room(event_id: String, room_id: String, cb: Callable):
 
 #region Participants
 func get_participants(event_id: String, cb: Callable):
-	#var headers = ["X-API-KEY:"+API_KEY, "X-PROPERTY-ID:"+PROPERTY_ID]
 	_logS("get_participants")
 	var response_handler = func handler(body: Dictionary):
 		var response: GetItemsResponse = GetItemsResponse.new()

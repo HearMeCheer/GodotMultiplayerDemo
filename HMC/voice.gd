@@ -20,9 +20,6 @@ signal connection_state_changed(state: WebRTCPeerConnection.ConnectionState)
 
 var is_closing: bool = false
 
-# var events: Dictionary
-# var participants: Dictionary
-# var rooms: Dictionary
 var playback: AudioStreamPlayback = null
 
 var record_effect: AudioEffectRecord
@@ -86,7 +83,6 @@ func _ready():
 	rtc_connection.data_channel_received.connect(self._on_data_channel_received)
 	rtc_connection.track_data_received.connect(self._on_track_data_received)
 
-	#rtc_connection.test_method()
 	pass # Replace with function body.
 
 func initialize():
@@ -226,17 +222,7 @@ func _get_captured_samples():
 	if record_effect && not record_effect.is_recording_active():
 		_logS("No recording active.")
 		return
-	
-	#var recording = record_effect.get_recording()
-	#if recording:
-		#var data = recording.get_data()
-		#var avg = 0
-		#for b in data:
-			#avg += abs(b)
-		#avg /= data.size()
-		#if avg > 0:
-			#print("Recorded " + str(data.size()) + " byte Avg: " + str(avg))
-	
+		
 	# Get the number of frames available in the capture buffer
 	var sample_count = capture_effect.get_frames_available()
 	
@@ -251,19 +237,7 @@ func _get_captured_samples():
 
 		# notify listeners (to visualize in waveform_control)	
 		audio_recorded.emit(buffer)
-		
-		#var audio_loopback = true
-		#if audio_loopback:
-			#playback.push_buffer(buffer)
-
-		
-			#avg += abs(v[0])
-		#avg /= sample_count
-		#if avg > 0:
-		#	print("Captured " + str(sample_count) + " samples. Avg: " + str(avg))
-		
-		#audio_frames_recorded += pcm_packet.size()
-		
+				
 		if rtc_connection:
 			#print("sending " + str(pcm_packet.size()) + " samples")
 			rtc_connection.send_audio_packet(pcm_packet)
@@ -271,8 +245,6 @@ func _get_captured_samples():
 			audio_frames_recorded = recorded_frame_counter.frames_per_second
 			#print("time delta: " + str(recorded_frame_counter.last_receive_time_delta))
 			_update_stats("audio_frames_recorded/s", audio_frames_recorded)
-			#_update_stats("samples_sent", pcm_packet.size())
-		# Process the buffer (e.g., save or analyze)
 		return buffer
 
 #endregion
@@ -311,12 +283,6 @@ func init_connection(participant:HmcApi.Participant):
 		pass
 	
 	$HmcApi.get_rtc_config(participant.iceUrl, response_handler)	
-	#$HmcApi.process_request(response_handler, 
-		#participant.iceUrl, 
-		#[],
-		#HTTPClient.METHOD_POST,
-		#{},
-		#false)
 		
 	pass
 
@@ -326,7 +292,6 @@ func init_connection_with_url(ice_url: String, connection_url: String, cb: Calla
 	
 	_logS("start connection ice=<%s> url=<%s>"%[ice_url, connection_url])
 	participant_connection_url = connection_url
-	#participant_data = participant
 	
 	var response_handler = func(r: HmcApi.GetSingleItemResponse):
 		if r.result:
@@ -348,12 +313,6 @@ func init_connection_with_url(ice_url: String, connection_url: String, cb: Calla
 		pass
 
 	$HmcApi.get_rtc_config(ice_url, response_handler)	
-	# $HmcApi.api_requests.process_request(response_handler, 
-	# 	ice_url, 
-	# 	[],
-	# 	HTTPClient.METHOD_POST,
-	# 	{},
-	# 	false)
 		
 	pass
 
@@ -366,20 +325,11 @@ func close_connection():
 		
 func _on_ice_candidate(mid, index, sdp):
 	_logS("on_ice_candidate mid: " + str(mid) + " index: " + str(index) + " sdp: " + str(sdp))
-	# Send the ICE candidate to the other peer via signaling server.
-	#Signaling.send_candidate(String(get_path()), mid, index, sdp)
 
 
 func _on_session(type, sdp):
 	_logS("_on_session type: " + type + "  sdp: " + sdp)
-	# Send the session to other peer via signaling server.
-	#Signaling.send_session(String(get_path()), type, sdp)
 	if !participant_connection_url.is_empty():
-		#var sdp_mod : String = sdp
-		#var pos = sdp_mod.find("m=application")
-		#if pos >= 0:
-			#print("added ptime attribute")
-			#sdp_mod.insert(pos, "a=ptime:20\n")
 		var offer = {
 			"type" : "offer",
 			"sdp" : sdp
@@ -388,7 +338,6 @@ func _on_session(type, sdp):
 		var base64offer = Marshalls.utf8_to_base64(offerJson)
 		
 		var response_handler = func(result):
-			#print("signal offer response: " + JSON.stringify(body))
 			if result is HmcApi.GetSingleItemResponse:
 				var response = result as HmcApi.GetSingleItemResponse
 				var json = response.item
@@ -397,22 +346,8 @@ func _on_session(type, sdp):
 				_logS("remote sdp: " + remote_sdp)
 				rtc_connection.set_remote_description(remote_type, remote_sdp)
 				pass
-			# var remote = Marshalls.base64_to_utf8(body["LocalDescription"])
-			# var json = JSON.parse_string(remote)
-			# var _status = json.get("status")
-			# var remote_type = json.get("type")
-			# var remote_sdp = json.get("sdp")
-			# _logS("remote sdp: " + remote_sdp)
-			# rtc_connection.set_remote_description(remote_type, remote_sdp)
-			# pass
 
 		$HmcApi.send_offer(participant_connection_url, base64offer, response_handler)	
-		# $HmcApi.process_request(response_handler, 
-		# 	participant_connection_url, 
-		# 	[],
-		# 	HTTPClient.METHOD_POST,
-		# 	{"LocalDescription": base64offer},
-		# 	false)
 			
 		# Set generated description as local.
 		rtc_connection.set_local_description(type, sdp)
@@ -508,26 +443,6 @@ func hand_shake_complete(response: HmcApi.GetSingleItemResponse):
 	state = ConnectionState.HAND_SHAKE
 	
 #region Events
-# func get_events_complete(response: HmcApi.GetItemsResponse):
-# 	_logS("get_events_complete")
-# 	if response.result:
-# 		var err: HmcApi.HmcApiError = $HmcApi.get_error_from_result(response.result, response.response_code)
-# 		_logS("get_events_complete error: " + err.message)
-# 		return
-
-# 	_logS("events: " + str(response.items.size()))
-# 	for event:HmcApi.Event in response.items:
-# 		_logS("event %s (%s)"%[event.name, event.id])
-# 		events[event.id] = event
-# 		hmc_events.append(event.name)
-# 		update_participants(event.id)		
-# 		update_rooms(event.id)
-		
-# 	if hmc_panel:
-# 		hmc_panel.update_events(events.values())
-		
-# 	event_list_changed.emit()
-
 func list_events(cb: Callable):
 	var response = func response_callback(r: HmcApi.GetItemsResponse):
 		_logS("get_events response")
@@ -546,8 +461,6 @@ func create_event(event_name: String, cb: Callable):
 			return
 		var event:HmcApi.Event = r.item
 		_logS("event %s (%s)"%[event.name, event.id])
-		# events[event.id] = event
-		# hmc_events.append(event.name)
 		cb.call(event)
 		pass
 	$HmcApi.create_event(event_name, response)
@@ -560,11 +473,6 @@ func delete_event(event_id: String, cb: Callable):
 			cb.call($HmcApi.get_error_from_result(r.result, r.response_code))
 			return
 
-		# var event = events.get(event_id)
-		# events.erase(event_id)
-		# hmc_events.clear()
-		# for e:HmcApi.Event in events.values():
-		# 	hmc_events.append(e.name)
 		cb.call(r.item)
 		pass
 	$HmcApi.delete_event(event_id, response)	
@@ -572,23 +480,6 @@ func delete_event(event_id: String, cb: Callable):
 #endregion
 
 #region rooms
-# func update_rooms(event_id: String):
-# 	var response = func response_callback(r: HmcApi.GetItemsResponse):
-# 		_logS("get_rooms response")
-# 		if r.result:
-# 			#cb.call($HmcApi.get_error_from_result(r.result, r.response_code))
-# 			return
-# 		_logS("rooms: " + str(r.items.size()))
-# 		var items: Array
-# 		rooms.clear()
-# 		for room:HmcApi.Room in r.items:
-# 			#print("room %s (%s)"%[room.name, room.id])
-# 			rooms[room.id] = room
-# 			items.append(room)
-# 		pass
-# 	$HmcApi.list_rooms(event_id, response)
-# 	pass
-
 func list_rooms(event_id: String, cb: Callable):
 	var response = func response_callback(r: HmcApi.GetItemsResponse):
 		_logS("list_rooms response")
@@ -605,8 +496,6 @@ func delete_room(event_id: String, room_id: String, cb: Callable):
 			cb.call($HmcApi.get_error_from_result(r.result, r.response_code))
 			return
 		_logS("room " +room_id + " removed")
-		# var room = rooms.get(room_id)
-		# rooms.erase(room_id)
 		cb.call(room_id)
 		pass
 	$HmcApi.delete_room(event_id, room_id, response)	
@@ -626,19 +515,6 @@ func create_room(event_id: String, room_name: String, cb: Callable):
 	pass
 
 #region participants
-# func update_participants(event_id: String):
-# 	participants.clear()
-# 	var cb = func(items:Array):
-# 		var parts: Array
-		
-# 		for participant:HmcApi.Participant in items:
-# 			parts.append(participant)
-# 			participants[participant.id] = participant
-# 			pass
-# 		pass
-		
-# 	get_participants(event_id, cb)
-
 func get_participants(event_id: String, cb:Callable):
 	var response = func response_callback(r: HmcApi.GetItemsResponse):
 		_logS("get_paricipants response")
@@ -664,10 +540,6 @@ func create_participant(event_id: String, part_name: String, cb: Callable):
 		cb.call(participant)
 		pass
 	$HmcApi.create_participant(event_id, part_name, response)
-
-# temp
-func store_participant_data(participant: HmcApi.Participant):
-	$HmcApi.store_properties(participant)
 
 func update_participant(event_id: String, participant: HmcApi.Participant, cb: Callable):
 	var response = func response_callback(r: HmcApi.GetSingleItemResponse):

@@ -104,20 +104,9 @@ func start_player_voice(id: int):
 
 	if event_id.is_empty():
 		_create_event_task()
-	
-	if options.enable_player_rooms:
-		# create a room for the new player
-		add_task(_create_player_room_task(id))
-	
+		
 	# create a participant for the new player
 	add_task(_create_participant_task(id))
-	
-	if options.enable_player_rooms:
-		# join the new room
-		add_task(join_player_room_task(id))
-		
-		# join all rooms
-		add_task(_join_all_rooms_task(id))
 	
 	# send voice data to the player (client)
 	add_task(_sync_server_data_task(id))
@@ -193,12 +182,6 @@ func _delete_event_task() -> TaskManager.SingleTask:
 	task.name = "delete_event_" + event_id
 	return task
 
-func _create_player_room_task(player_id: int) -> TaskManager.SingleTask:
-	var cond = func (): return !event_id.is_empty()
-	var task = TaskManager.SingleTask.new(_create_player_room, player_id, {"condition": cond})
-	task.name = "create_room_" + str(player_id)
-	return task
-
 func _create_participant_task(player_id: int) -> TaskManager.SingleTask:
 	var cond = func (): return !event_id.is_empty()
 	var task = TaskManager.SingleTask.new(_create_participant, player_id, {"condition": cond})
@@ -229,40 +212,6 @@ func _sync_server_data_task(player_id: int) -> TaskManager.SingleTask:
 	task_manager.add_task(new_task)
 	return new_task
 
-# join a new room by old players
-func join_player_room_group_task(player_id: int, room_id: String) -> TaskManager.SingleTask:
-	var main_task = TaskManager.SingleTask.new(func (task: TaskManager.SingleTask, _data: Variant):
-		task.set_done()
-		pass, null, {"name": "join_player_room_group_" + str(player_id) + "_" + room_id, "continue_on_fail": true})
-	
-	for old_player in voice_players.keys():
-		if old_player == player_id:
-			continue
-		var subtask = _join_room_task(old_player, room_id)
-		main_task.add_subtask(subtask)
-
-	return main_task
-
-# schedule tasks to join a new room by old players
-func join_player_room_task(player_id: int) -> TaskManager.SingleTask:
-	var cond = func (): return !event_id.is_empty()
-
-	var task_fn = func (task: TaskManager.SingleTask, _data: Variant):
-		var player_info = voice_players[player_id]
-		if player_info:
-			var room_id = player_info.get("player_room")
-			if room_id:
-				var subtask = join_player_room_group_task(player_id, room_id)
-				task_manager.add_task(subtask)
-			else:
-				_logS("join_player_room_task: room_id not found for player: " + str(player_id))
-		task.set_done()
-		pass
-
-	var new_task = TaskManager.SingleTask.new(task_fn, null, {"condition": cond})
-	new_task.name = "join_player_room_" + str(player_id)
-	return new_task
-
 func _join_room_task(player_id: int, room_id: String) -> TaskManager.SingleTask:
 	var cond = func (): 
 		var valid_event_id = !event_id.is_empty()
@@ -288,36 +237,6 @@ func _join_room_task(player_id: int, room_id: String) -> TaskManager.SingleTask:
 	var new_task = TaskManager.SingleTask.new(task_fn, null, {"condition" : cond})
 	new_task.name = "join_room_" + room_id
 	return new_task
-
-func _join_all_rooms_task(player_id: int)-> TaskManager.SingleTask:
-	var cond = func (): return !event_id.is_empty()
-	var new_task = TaskManager.SingleTask.new(_join_all_rooms_task_group, player_id, {"condition": cond})
-	new_task.name = "join_all_rooms"
-	return new_task
-
-func _join_all_rooms_task_group(task: TaskManager.SingleTask, data: Variant):
-	var player_id: int = data
-	var main_task_fun = func (main_task: TaskManager.SingleTask, _data: Variant):
-		# room data changed, update participants
-		_get_participants_task()
-		add_task(_set_player_ready_task(player_id, true))
-		main_task.set_done()
-		pass
-
-	var task_group = TaskManager.SingleTask.new(main_task_fun)
-	task_group.name = "join_all_rooms_group"
-
-	for player in voice_players.keys():
-		if player == 1:
-			continue
-
-		var room_id = voice_players[player].get("player_room")
-		if room_id:
-			var subtask = _join_room_task(player_id, room_id)
-			task_group.add_subtask(subtask)
-
-	task_manager.add_task(task_group)
-	task.set_done()
 
 func _set_player_ready_task(player_id: int, player_ready: bool) -> TaskManager.SingleTask:
 	var new_task = TaskManager.SingleTask.new(func (task: TaskManager.SingleTask, _data: Variant):
@@ -367,21 +286,6 @@ func _list_and_delete_all_event_rooms_task():
 
 	return list_rooms_task
 
-func _delete_all_players_rooms_task():
-	var main_fun = func (task: TaskManager.SingleTask, _data: Variant):
-		task.set_done()
-		pass
-	var main_task = TaskManager.SingleTask.new(main_fun, null, {"name": "delete_all_players_rooms", "continue_on_fail": true})
-	for player_id in voice_players.keys():
-		if player_id == 1:
-			continue
-
-		var room_id = voice_players[player_id].get("player_room")
-		if room_id:
-			var subtask = TaskManager.SingleTask.new(_delete_room, room_id, {"name": "delete_room_" + room_id})
-			main_task.add_subtask(subtask)
-	return main_task
-
 func _delete_room_task(room_id: String):
 	var cond = func (): return !event_id.is_empty()
 	var task = TaskManager.SingleTask.new(_delete_room, room_id, {"condition": cond, "name": "delete_room_" + room_id})
@@ -430,23 +334,6 @@ func _delete_event(task: TaskManager.SingleTask, _data: Variant):
 		pass
 	)
 	#event_name = ""
-	pass
-
-func _create_player_room(task: TaskManager.SingleTask, data: Variant):
-	var player_id: int = data
-	var player_info:Dictionary = voice_players[player_id] 
-	
-	voice_instance.create_room(event_id, "room_" + str(player_id), func (room: Variant):
-		if room is HmcApi.Room:
-			_logS("room created: " + room.name + "(" + room.id + ")")
-			player_info["player_room"] = room.id
-			event_rooms[room.id] = room
-		if room is HmcApi.HmcApiError:
-			push_error("failed to create room: " + room.message)
-			task.set_failed(room.message)
-		task.set_done()
-		pass
-	)
 	pass
 
 func _list_rooms(task: TaskManager.SingleTask, data: Variant):
@@ -556,116 +443,7 @@ func _delete_participant(task: TaskManager.SingleTask, data: Variant):
 		pass)
 	pass
 
-func _upload_participant_data(task: TaskManager.SingleTask, data: Variant):
-	var player_id: int = data.get("player_id")
-	var player_info = voice_players.get(player_id)
-	
-	if player_info == null:
-		_logS("upload_participant_data: player not found for id: " + str(player_id))
-		task.set_failed("upload_participant_data: player not found for id: " + str(player_id))
-		return
-
-	var participant_id: String = player_info.get("participant_id")
-	var part: HmcApi.Participant = event_participants.get(participant_id)
-	if part == null:
-		_logS("upload_participant_data: participant not found for id: " + str(participant_id))
-		task.set_failed("upload_participant_data: participant not found for id: " + str(participant_id))
-		return
-
-	if part.rooms.get(player_info["player_room"]) == null:
-		_logS("upload_participant_data: room not found for player: " + str(player_id))
-		task.set_failed("upload_participant_data: room not found for player: " + str(player_id))
-		return
-
-	if part.rooms.size() < event_rooms.size() + 2:
-		_logS("upload_participant_data: not all rooms are joined for player: " + str(player_id) + " part.rooms: " + str(part.rooms.keys()))
-		task.set_failed("upload_participant_data: not all rooms are joined for participant: " + str(participant_id))
-		return
-
-	_logS("upload_participant_data: participant " + str(participant_id) + " rooms: " + str(part.rooms))
-	voice_instance.update_participant_rooms(event_id, part, func (result: Variant):
-		if result is HmcApi.HmcApiError:
-			var err = result as HmcApi.HmcApiError
-			push_error("failed to update participant: " + err.message)
-			task.set_failed(err.message)
-		task.set_done()
-	)
-	pass
-
 #endregion
-
-## update all rooms with player positions
-func update_participant_position(player_id: int):
-	var player_info = voice_players[player_id]
-	var player_pos: Vector3 = player_info["position"]
-	var part_id = player_info.get("participant_id")
-	if part_id == null:
-		_logS("update_participant_position("+str(player_id)+"): participant_id not found for player: " + str(player_id))
-		return
-
-	var part: HmcApi.Participant = event_participants.get(part_id)
-	if part == null:
-		_logS("update_participant_position("+str(player_id)+"): participant not found for id: " + str(part_id))
-		return
-
-	for id in voice_players.keys():
-		if id == player_id or id == 1:
-			continue
-
-		var other_player = voice_players[id]
-
-		if other_player["ready"] == false:
-			continue
-
-		var room_id = other_player.get("player_room")
-		if room_id == null:
-			_logS("update_participant_position("+str(player_id)+"): room_id not found for player: " + str(id))
-			continue
-
-		var room_data:Dictionary = part.get_room(room_id)
-		if room_data.is_empty():
-			_logS("update_participant_position("+str(player_id)+"): room data for " + room_id + " not found for participant: " + str(part.name))
-			continue
-
-		var room_params: HmcApi.ListenerParameters
-		var other_pos: Vector3 = other_player["position"]
-		var pos_diff = player_pos - other_pos
-
-		room_params = HmcApi.ListenerParameters.new(0.0, 1.0, pos_diff)
-		room_data.merge(room_params.to_dict(), true)
-
-		#_logS("update_player_position("+str(player_id)+"): participant "+ str(id) + " room " + room_id + " " + str(room_data))
-
-	pass
-
-func check_player_position(player_id: int) -> bool:
-	if !players_container.has_node(str(player_id)):
-		return false
-		
-	var player = players_container.get_node(str(player_id))
-	if !player:
-		return false
-
-	var player_info = voice_players[player_id]
-	var last_pos = player_info.get("position")
-	var current_pos = player.position
-	var diff = current_pos - last_pos
-	if diff.length() < 0.99:
-		return false
-
-	
-	player_info["position"] = current_pos
-	#_logS("player " + str(player_id) + " position: " + str(current_pos))
-	return true
-
-func check_camera_position(player_id: int) -> bool:
-	if !voice_players[player_id].has("camera_position_changed"):
-		return false
-
-	var changed = voice_players[player_id].get("camera_position_changed")
-	voice_players[player_id]["camera_position_changed"] = false
-	#_logS("player " + str(player_id) + " camera position changed: " + str(changed))
-	return changed
 
 func add_task(task: TaskManager.SingleTask, after: TaskManager.SingleTask = null):
 	task_manager.add_task(task, after)
