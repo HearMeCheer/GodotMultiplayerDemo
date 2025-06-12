@@ -10,8 +10,8 @@ config_version=5
 
 [application]
 
-config/name="Godot 3D Multiplayer Template"
-config/description="This is a template for a 3D multiplayer game developed in the Godot engine."
+config/name="HMC Godot Multiplayer Demo"
+config/description="This is a 3D multiplayer game developed in the Godot engine to showcase HearMeCheer audio streaming capabilities."
 config/version="0.2.0"
 config/tags=PackedStringArray("3d", "network")
 run/main_scene="res://level/scenes/level.tscn"
